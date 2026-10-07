@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mobile-diagnostics-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mobile_diagnostics
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: mobile-diagnostics-api
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/mobile_diagnostics
+      DEBUG: "true"
+      ENVIRONMENT: development
+      ADB_PATH: adb
+      IDEVICE_ID_PATH: idevice_id
+      IDEVICE_INFO_PATH: ideviceinfo
+      IDEVICE_BACKUP_PATH: idevicebackup2
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app:ro
+    # For USB device access (Android/iOS)
+    devices:
+      - "/dev/bus/usb:/dev/bus/usb"
+    privileged: true
+
+volumes:
+  postgres_data:
